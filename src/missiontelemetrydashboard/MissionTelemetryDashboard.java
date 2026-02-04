@@ -6,6 +6,8 @@ import java.awt.CardLayout;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridLayout;
+import java.awt.Insets;
+import java.awt.Image;
 import java.text.DecimalFormat;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -20,8 +22,10 @@ import java.util.regex.Pattern;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
+import java.net.URI;
 import java.net.URL;
 import javax.swing.BorderFactory;
+import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JFrame;
@@ -141,24 +145,46 @@ public class MissionTelemetryDashboard extends JFrame {
     private JPanel buildTopControls() {
         JPanel controls = new JPanel(new BorderLayout(8, 8));
 
-        JPanel leftControls = new JPanel(new GridLayout(1, 3, 8, 8));
+        JPanel leftControls = new JPanel(new GridLayout(1, 2, 0, 8));
         vehicleSelect.setPrototypeDisplayValue(new VehicleOption("Select Vehicle", "Type", DataAvailability.BOTH));
         sourceSelect.setPrototypeDisplayValue(DataSource.SIMULATED);
         JLabel vehicleLabel = new JLabel("Vehicle");
         JLabel sourceLabel = new JLabel("Sources");
         vehicleLabel.setFont(new Font("SansSerif", Font.PLAIN, 12));
         sourceLabel.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        URL refreshUrl = MissionTelemetryDashboard.class.getResource(
+                "/missiontelemetrydashboard/icons/refresh.png");
+        if (refreshUrl != null) {
+            refreshButton.setIcon(new ImageIcon(
+                    new ImageIcon(refreshUrl).getImage()
+                            .getScaledInstance(20, 20, Image.SCALE_SMOOTH)));
+            refreshButton.setText("");
+        } else {
+            refreshButton.setText("R");
+        }
+        refreshButton.setBorderPainted(false);
+        refreshButton.setContentAreaFilled(false);
+        refreshButton.setFocusPainted(false);
+        refreshButton.setOpaque(false);
+        refreshButton.setMargin(new Insets(0, 0, 0, 0));
+        refreshButton.setPreferredSize(new Dimension(20, 20));
+        refreshButton.setMinimumSize(new Dimension(20, 20));
+        refreshButton.setMaximumSize(new Dimension(20, 20));
+        refreshButton.setToolTipText("Refresh vehicles");
 
         JPanel vehiclePanelBox = new JPanel(new BorderLayout(0, 0));
+        JPanel vehicleInputPanel = new JPanel(new BorderLayout(0, 0));
+        vehicleInputPanel.add(vehicleSelect, BorderLayout.CENTER);
+        vehicleInputPanel.add(refreshButton, BorderLayout.EAST);
         vehiclePanelBox.add(vehicleLabel, BorderLayout.WEST);
-        vehiclePanelBox.add(vehicleSelect, BorderLayout.CENTER);
+        vehiclePanelBox.add(vehicleInputPanel, BorderLayout.CENTER);
 
         JPanel sourcePanelBox = new JPanel(new BorderLayout(0, 0));
         sourcePanelBox.add(sourceLabel, BorderLayout.WEST);
         sourcePanelBox.add(sourceSelect, BorderLayout.CENTER);
+        sourcePanelBox.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 0));
 
         leftControls.add(vehiclePanelBox);
-        leftControls.add(refreshButton);
         leftControls.add(sourcePanelBox);
 
         JPanel rightControls = new JPanel(new GridLayout(1, 3, 8, 8));
@@ -623,7 +649,8 @@ public class MissionTelemetryDashboard extends JFrame {
 
     private String fetchUrlString(String urlString) throws Exception {
         // Simple Java 8 HTTP fetch helper.
-        HttpURLConnection connection = (HttpURLConnection) new URL(urlString).openConnection();
+        URL url = URI.create(urlString).toURL();
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
         connection.setConnectTimeout(8000);
         connection.setReadTimeout(8000);
         connection.setRequestMethod("GET");
@@ -930,4 +957,5 @@ public class MissionTelemetryDashboard extends JFrame {
             this.signalDb = signalDb;
         }
     }
+
 }
