@@ -932,7 +932,16 @@ public class MissionTelemetryDashboard extends JFrame {
         SIMULATED("Simulated (Demo)"),
         ISS_TLE("ISS TLE (Celestrak)"),
         OPENSKY("OpenSky (ADS-B)"),
-        AISHUB("AIS Hub");
+        AISHUB("AIS Hub"),
+        SPACE_TRACK("Space-Track"),
+        N2YO("N2YO"),
+        ADSB_EXCHANGE("ADS-B Exchange (RapidAPI)"),
+        MARINETRAFFIC("MarineTraffic"),
+        FLEETMON("FleetMon"),
+        NOAA("NOAA"),
+        OPEN_METEO("Open-Meteo"),
+        NASA_OPEN("NASA Open APIs"),
+        NASA_INSIGHT("NASA InSight (Archived)");
 
         private final String label;
 
