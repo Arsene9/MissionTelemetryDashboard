@@ -10,6 +10,8 @@ import java.awt.GridLayout;
 import java.awt.Insets;
 import java.awt.Image;
 import java.awt.RenderingHints;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.text.DecimalFormat;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -39,7 +41,9 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.SwingConstants;
 import javax.swing.Timer;
+import javax.swing.border.LineBorder;
 
+// Mission telemetry dashboard with real-time and historical views.
 public class MissionTelemetryDashboard extends JFrame {
     // Formatting and history sampling.
     private static final DecimalFormat FORMAT = new DecimalFormat("0.00");
@@ -52,19 +56,19 @@ public class MissionTelemetryDashboard extends JFrame {
     private static final Font FONT_LABEL = new Font("Segoe UI", Font.PLAIN, 12);
     private static final Font FONT_VALUE = new Font("Segoe UI", Font.BOLD, 26);
     private static final Font FONT_BUTTON = new Font("Segoe UI", Font.PLAIN, 12);
-    private static final Color COLOR_BG = new Color(245, 247, 250);
-    private static final Color COLOR_CARD = new Color(255, 255, 255);
-    private static final Color COLOR_BORDER = new Color(220, 225, 230);
-    private static final Color COLOR_TEXT = new Color(40, 40, 40);
-    private static final Color COLOR_SUBTLE = new Color(110, 120, 130);
-    private static final Color COLOR_ACCENT = new Color(0, 102, 204);
-    private static final Color COLOR_ACCENT_LIGHT = new Color(227, 239, 251);
-    private static final Color COLOR_STATUS_OK = new Color(226, 245, 232);
-    private static final Color COLOR_STATUS_WARN = new Color(255, 242, 204);
-    private static final Color COLOR_STATUS_OK_TEXT = new Color(0, 128, 0);
-    private static final Color COLOR_STATUS_WARN_TEXT = new Color(176, 94, 0);
+    private static final Color COLOR_BG = new Color(18, 20, 28);
+    private static final Color COLOR_CARD = new Color(30, 34, 46);
+    private static final Color COLOR_BORDER = new Color(58, 68, 86);
+    private static final Color COLOR_TEXT = new Color(235, 238, 245);
+    private static final Color COLOR_SUBTLE = new Color(172, 182, 198);
+    private static final Color COLOR_ACCENT = new Color(92, 140, 255);
+    private static final Color COLOR_GLOW = new Color(92, 140, 255, 80);
+    private static final Color COLOR_STATUS_OK = new Color(30, 94, 66);
+    private static final Color COLOR_STATUS_WARN = new Color(108, 78, 22);
+    private static final Color COLOR_STATUS_OK_TEXT = new Color(220, 255, 236);
+    private static final Color COLOR_STATUS_WARN_TEXT = new Color(255, 244, 214);
     // Optional AIS Hub username; leave blank to disable AIS polling.
-    private static String AIS_USERNAME = "";
+    private static final String AIS_USERNAME = "";
 
     // UI controls.
     private final Random random = new Random();
@@ -134,6 +138,7 @@ public class MissionTelemetryDashboard extends JFrame {
         startDataPolling();
     }
 
+    // Header with title, data mode, and status chip.
     private JPanel buildHeader() {
         JPanel header = new JPanel(new BorderLayout(12, 12));
         header.setBorder(BorderFactory.createEmptyBorder(12, 12, 0, 12));
@@ -149,7 +154,10 @@ public class MissionTelemetryDashboard extends JFrame {
         statusValue.setForeground(COLOR_STATUS_OK_TEXT);
         statusValue.setBackground(COLOR_STATUS_OK);
         statusValue.setOpaque(true);
-        statusValue.setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 8));
+        statusValue.setBorder(BorderFactory.createCompoundBorder(
+                new LineBorder(COLOR_BORDER, 1, true),
+                BorderFactory.createEmptyBorder(4, 8, 4, 8)
+        ));
 
         dataModeLabel.setFont(FONT_SUBTITLE);
         dataModeLabel.setForeground(COLOR_SUBTLE);
@@ -170,6 +178,7 @@ public class MissionTelemetryDashboard extends JFrame {
         return header;
     }
 
+    // Top row controls: vehicle/source selection, refresh, mode toggles, export.
     private JPanel buildTopControls() {
         JPanel controls = new JPanel(new BorderLayout(8, 8));
         controls.setBackground(COLOR_BG);
@@ -188,6 +197,12 @@ public class MissionTelemetryDashboard extends JFrame {
         sourceSelect.setFont(FONT_LABEL);
         vehicleSelect.setBackground(COLOR_CARD);
         sourceSelect.setBackground(COLOR_CARD);
+        vehicleSelect.setForeground(COLOR_TEXT);
+        sourceSelect.setForeground(COLOR_TEXT);
+        vehicleSelect.setOpaque(false);
+        sourceSelect.setOpaque(false);
+        vehicleSelect.setBorder(new LineBorder(COLOR_BORDER, 1, true));
+        sourceSelect.setBorder(new LineBorder(COLOR_BORDER, 1, true));
         URL refreshUrl = MissionTelemetryDashboard.class.getResource(
                 "/missiontelemetrydashboard/icons/refresh.png");
         if (refreshUrl != null) {
@@ -234,8 +249,10 @@ public class MissionTelemetryDashboard extends JFrame {
         exportButton.setFocusPainted(false);
         exportButton.setBackground(COLOR_CARD);
         exportButton.setForeground(COLOR_TEXT);
-        exportButton.setBorder(BorderFactory.createLineBorder(COLOR_BORDER));
+        exportButton.setBorder(new LineBorder(COLOR_BORDER, 1, true));
         exportButton.setOpaque(true);
+        exportButton.setContentAreaFilled(true);
+        installGlow(exportButton);
         styleToggleButton(historicalButton, false);
         styleToggleButton(realtimeButton, true);
         rightControls.add(historicalButton);
@@ -247,6 +264,7 @@ public class MissionTelemetryDashboard extends JFrame {
         return controls;
     }
 
+    // Center area switches between metric tiles and historical charts.
     private JPanel buildCenterPanel() {
         metricsPanel.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
         graphsPanel.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
@@ -270,10 +288,11 @@ public class MissionTelemetryDashboard extends JFrame {
         return centerPanel;
     }
 
+    // Builds one metric tile with a label and a large value.
     private JPanel buildMetricPanel(String label, JLabel valueLabel) {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(COLOR_BORDER),
+                new LineBorder(COLOR_BORDER, 1, true),
                 BorderFactory.createEmptyBorder(12, 12, 12, 12)
         ));
         panel.setBackground(COLOR_CARD);
@@ -291,6 +310,7 @@ public class MissionTelemetryDashboard extends JFrame {
         return panel;
     }
 
+    // Right-side alerts panel for warnings and status messages.
     private JPanel buildAlerts() {
         JPanel alerts = new JPanel(new BorderLayout());
         alerts.setBorder(BorderFactory.createEmptyBorder(12, 0, 12, 12));
@@ -310,7 +330,7 @@ public class MissionTelemetryDashboard extends JFrame {
         alertsArea.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
 
         JScrollPane scrollPane = new JScrollPane(alertsArea);
-        scrollPane.setBorder(BorderFactory.createLineBorder(COLOR_BORDER));
+        scrollPane.setBorder(new LineBorder(COLOR_BORDER, 1, true));
         scrollPane.getViewport().setBackground(COLOR_CARD);
 
         alerts.add(title, BorderLayout.NORTH);
@@ -320,15 +340,13 @@ public class MissionTelemetryDashboard extends JFrame {
 
     private void startTelemetryStream() {
         // UI update timer; simulates telemetry ticks and refreshes views.
-        Timer timer = new Timer(1000, new java.awt.event.ActionListener() {
-            @Override
-            public void actionPerformed(java.awt.event.ActionEvent event) {
-                updateTelemetry();
-            }
+        Timer timer = new Timer(1000, (java.awt.event.ActionEvent event) -> {
+            updateTelemetry();
         });
         timer.start();
     }
 
+    // Simulated telemetry update (used for demo mode).
     private void updateTelemetry() {
         battery = clamp(battery - random.nextDouble() * 0.4, 0, 100);
         if (battery < 5 && random.nextDouble() < 0.3) {
@@ -350,6 +368,7 @@ public class MissionTelemetryDashboard extends JFrame {
         }
     }
 
+    // Reflect the latest numeric values in the UI tiles.
     private void updateMetricLabels() {
         batteryValue.setText(FORMAT.format(battery));
         tempValue.setText(FORMAT.format(temp));
@@ -357,6 +376,7 @@ public class MissionTelemetryDashboard extends JFrame {
         velocityValue.setText(FORMAT.format(velocity));
     }
 
+    // Generate alerts and update the overall status chip.
     private void updateAlertsAndStatus() {
         boolean newBatteryCritical = battery < 25;
         boolean newTempHigh = temp > 70;
@@ -396,56 +416,44 @@ public class MissionTelemetryDashboard extends JFrame {
         return Math.max(min, Math.min(max, value));
     }
 
+    // Populate the Sources dropdown and respond to changes.
     private void configureSources() {
         for (DataSource source : DataSource.values()) {
             sourceSelect.addItem(source);
         }
         sourceSelect.setSelectedItem(DataSource.SIMULATED);
-        sourceSelect.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-            public void actionPerformed(java.awt.event.ActionEvent event) {
-                DataSource source = (DataSource) sourceSelect.getSelectedItem();
-                if (source == null) {
-                    return;
-                }
-                currentSource = source;
-                latestSnapshot = null;
-                refreshVehicleList();
+        sourceSelect.addActionListener((java.awt.event.ActionEvent event) -> {
+            DataSource source = (DataSource) sourceSelect.getSelectedItem();
+            if (source == null) {
+                return;
             }
+            currentSource = source;
+            latestSnapshot = null;
+            refreshVehicleList();
         });
     }
 
+    // Wire vehicle selection, refresh, mode toggles, and CSV export.
     private void configureVehicles() {
         refreshVehicleList();
-        refreshButton.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-            public void actionPerformed(java.awt.event.ActionEvent event) {
-                refreshVehicleList();
-            }
+        refreshButton.addActionListener((java.awt.event.ActionEvent event) -> {
+            refreshVehicleList();
         });
 
         vehicleSelect.addActionListener(new VehicleSelectionListener());
 
-        historicalButton.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-            public void actionPerformed(java.awt.event.ActionEvent event) {
-                setDataMode(DataMode.HISTORICAL);
-            }
+        historicalButton.addActionListener((java.awt.event.ActionEvent event) -> {
+            setDataMode(DataMode.HISTORICAL);
         });
-        realtimeButton.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-            public void actionPerformed(java.awt.event.ActionEvent event) {
-                setDataMode(DataMode.REALTIME);
-            }
+        realtimeButton.addActionListener((java.awt.event.ActionEvent event) -> {
+            setDataMode(DataMode.REALTIME);
         });
-        exportButton.addActionListener(new java.awt.event.ActionListener() {
-            @Override
-            public void actionPerformed(java.awt.event.ActionEvent event) {
-                exportHistoricalCsv();
-            }
+        exportButton.addActionListener((java.awt.event.ActionEvent event) -> {
+            exportHistoricalCsv();
         });
     }
 
+    // Refresh the vehicle list based on the selected source.
     private void refreshVehicleList() {
         VehicleOption selectedOption = (VehicleOption) vehicleSelect.getSelectedItem();
         vehicleSelect.removeAllItems();
@@ -464,6 +472,7 @@ public class MissionTelemetryDashboard extends JFrame {
         }
     }
 
+    // Update title, availability, and default mode for a chosen vehicle.
     private void handleVehicleSelection() {
         VehicleOption selectedOption = (VehicleOption) vehicleSelect.getSelectedItem();
         if (selectedOption == null) {
@@ -496,6 +505,7 @@ public class MissionTelemetryDashboard extends JFrame {
         exportButton.setEnabled(availability.supportsHistorical());
     }
 
+    // Switch between real-time tiles and historical charts.
     private void setDataMode(DataMode mode) {
         currentMode = mode;
         dataModeLabel.setText(mode == DataMode.REALTIME ? "Real-Time Data" : "Historical Data");
@@ -504,20 +514,61 @@ public class MissionTelemetryDashboard extends JFrame {
         styleToggleButton(realtimeButton, mode == DataMode.REALTIME);
     }
 
+    // Style the "Historical" and "Real-Time" toggle buttons.
     private void styleToggleButton(JButton button, boolean active) {
         button.setFocusPainted(false);
         button.setOpaque(true);
+        button.setContentAreaFilled(true);
         if (active) {
             button.setBackground(COLOR_ACCENT);
             button.setForeground(Color.WHITE);
-            button.setBorder(BorderFactory.createLineBorder(COLOR_ACCENT));
+            button.setBorder(new LineBorder(COLOR_ACCENT, 1, true));
+            clearGlow(button);
         } else {
             button.setBackground(COLOR_CARD);
             button.setForeground(COLOR_TEXT);
-            button.setBorder(BorderFactory.createLineBorder(COLOR_BORDER));
+            button.setBorder(new LineBorder(COLOR_BORDER, 1, true));
+            installGlow(button);
         }
     }
 
+    // Add a subtle hover glow around a button.
+    private void installGlow(JButton button) {
+        clearGlow(button);
+        MouseAdapter adapter = new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent event) {
+                if (!button.isEnabled()) {
+                    return;
+                }
+                button.setBorder(new LineBorder(COLOR_GLOW, 2, true));
+            }
+
+            @Override
+            public void mouseExited(MouseEvent event) {
+                if (!button.isEnabled()) {
+                    return;
+                }
+                Color target = button.getBackground().equals(COLOR_ACCENT)
+                        ? COLOR_ACCENT
+                        : COLOR_BORDER;
+                button.setBorder(new LineBorder(target, 1, true));
+            }
+        };
+        button.putClientProperty("glowAdapter", adapter);
+        button.addMouseListener(adapter);
+    }
+
+    // Remove any existing hover glow listener.
+    private void clearGlow(JButton button) {
+        Object existing = button.getClientProperty("glowAdapter");
+        if (existing instanceof MouseAdapter) {
+            button.removeMouseListener((MouseAdapter) existing);
+        }
+        button.putClientProperty("glowAdapter", null);
+    }
+
+    // Seed historical series with a month of simulated data.
     private void seedHistory() {
         long now = System.currentTimeMillis();
         long start = now - (batteryHistory.getMaxPoints() - 1L) * HISTORY_STEP_MS;
@@ -527,6 +578,7 @@ public class MissionTelemetryDashboard extends JFrame {
         velocityHistory.seed(1200.0, 20.0, 800.0, 2400.0, start);
     }
 
+    // Append the latest values into the historical series.
     private void appendHistoryPoint() {
         long now = System.currentTimeMillis();
         batteryHistory.addOrUpdate(battery, now);
@@ -535,6 +587,7 @@ public class MissionTelemetryDashboard extends JFrame {
         velocityHistory.addOrUpdate(velocity, now);
     }
 
+    // Export historical values to a CSV file.
     private void exportHistoricalCsv() {
         if (!exportButton.isEnabled()) {
             return;
@@ -570,19 +623,18 @@ public class MissionTelemetryDashboard extends JFrame {
         }
     }
 
+    // Background polling for live data sources.
     private void startDataPolling() {
         // Background polling for external telemetry sources.
-        dataExecutor.scheduleAtFixedRate(new Runnable() {
-            @Override
-            public void run() {
-                DataSnapshot snapshot = fetchSnapshot(currentSource);
-                if (snapshot != null) {
-                    latestSnapshot = snapshot;
-                }
+        dataExecutor.scheduleAtFixedRate(() -> {
+            DataSnapshot snapshot = fetchSnapshot(currentSource);
+            if (snapshot != null) {
+                latestSnapshot = snapshot;
             }
         }, 0, 15, TimeUnit.SECONDS);
     }
 
+    // Route to the correct data fetcher based on source.
     private DataSnapshot fetchSnapshot(DataSource source) {
         try {
             if (source == DataSource.ISS_TLE) {
@@ -600,6 +652,7 @@ public class MissionTelemetryDashboard extends JFrame {
         return null;
     }
 
+    // Fetch ISS orbital data from Celestrak TLE and derive an approximate speed.
     private DataSnapshot fetchIssTle() throws Exception {
         String url = "https://celestrak.org/NORAD/elements/gp.php?NAME=ISS%20(ZARYA)&FORMAT=TLE";
         String data = fetchUrlString(url);
@@ -620,6 +673,7 @@ public class MissionTelemetryDashboard extends JFrame {
         return new DataSnapshot(speedMs, -10.0, clamp(60.0 - altitudeKm * 0.08, 5.0, 60.0));
     }
 
+    // Fetch live aircraft state from OpenSky and map to telemetry fields.
     private DataSnapshot fetchOpenSky() throws Exception {
         String url = "https://opensky-network.org/api/states/all";
         String data = fetchUrlString(url);
@@ -637,6 +691,7 @@ public class MissionTelemetryDashboard extends JFrame {
         return new DataSnapshot(velocityMs, tempC, signalDb);
     }
 
+    // Fetch marine vessel speed from AIS Hub and map to telemetry fields.
     private DataSnapshot fetchAisHub() throws Exception {
         if (AIS_USERNAME == null || AIS_USERNAME.trim().isEmpty()) {
             return null;
@@ -653,6 +708,7 @@ public class MissionTelemetryDashboard extends JFrame {
         return new DataSnapshot(speedMs, temp, signal);
     }
 
+    // Basic JSON parsing to extract the first OpenSky state entry.
     private List<String> parseFirstOpenSkyState(String json) {
         int statesIndex = json.indexOf("\"states\"");
         if (statesIndex == -1) {
@@ -723,9 +779,10 @@ public class MissionTelemetryDashboard extends JFrame {
         if (value == null || value.isEmpty() || value.equals("null")) {
             return null;
         }
-        return Double.parseDouble(value.replace("\"", "").trim());
+        return Double.valueOf(value.replace("\"", "").trim());
     }
 
+    // Simple HTTP GET helper (Java 8 compatible).
     private String fetchUrlString(String urlString) throws Exception {
         // Simple Java 8 HTTP fetch helper.
         URL url = URI.create(urlString).toURL();
@@ -770,6 +827,7 @@ public class MissionTelemetryDashboard extends JFrame {
         HISTORICAL
     }
 
+    // Indicates which modes a vehicle supports.
     private enum DataAvailability {
         REALTIME_ONLY,
         HISTORICAL_ONLY,
@@ -794,6 +852,7 @@ public class MissionTelemetryDashboard extends JFrame {
         }
     }
 
+    // Vehicle entry shown in the Vehicle dropdown.
     private static class VehicleOption {
         private final String name;
         private final String type;
@@ -807,16 +866,7 @@ public class MissionTelemetryDashboard extends JFrame {
 
         static List<VehicleOption> forSource(DataSource source) {
             List<VehicleOption> options = new ArrayList<>();
-            if (source == DataSource.ISS_TLE) {
-                options.add(new VehicleOption("ISS (International Space Station)", "Satellite",
-                        DataAvailability.BOTH));
-            } else if (source == DataSource.OPENSKY) {
-                options.add(new VehicleOption("Commercial Aircraft (ADS-B)", "Aircraft",
-                        DataAvailability.BOTH));
-            } else if (source == DataSource.AISHUB) {
-                options.add(new VehicleOption("Cargo Vessel (AIS)", "Ship",
-                        DataAvailability.BOTH));
-            } else {
+            if (null == source) {
                 options.add(new VehicleOption("ISS (International Space Station)", "Satellite",
                         DataAvailability.BOTH));
                 options.add(new VehicleOption("Commercial Aircraft (ADS-B)", "Aircraft",
@@ -827,6 +877,31 @@ public class MissionTelemetryDashboard extends JFrame {
                         DataAvailability.HISTORICAL_ONLY));
                 options.add(new VehicleOption("Deep-Space Probe (Public Archive)", "Spacecraft",
                         DataAvailability.HISTORICAL_ONLY));
+            } else switch (source) {
+                case ISS_TLE:
+                    options.add(new VehicleOption("ISS (International Space Station)", "Satellite",
+                            DataAvailability.BOTH));
+                    break;
+                case OPENSKY:
+                    options.add(new VehicleOption("Commercial Aircraft (ADS-B)", "Aircraft",
+                            DataAvailability.BOTH));
+                    break;
+                case AISHUB:
+                    options.add(new VehicleOption("Cargo Vessel (AIS)", "Ship",
+                            DataAvailability.BOTH));
+                    break;
+                default:
+                    options.add(new VehicleOption("ISS (International Space Station)", "Satellite",
+                            DataAvailability.BOTH));
+                    options.add(new VehicleOption("Commercial Aircraft (ADS-B)", "Aircraft",
+                            DataAvailability.BOTH));
+                    options.add(new VehicleOption("Cargo Vessel (AIS)", "Ship",
+                            DataAvailability.BOTH));
+                    options.add(new VehicleOption("Mars InSight Lander", "Planetary Lander",
+                            DataAvailability.HISTORICAL_ONLY));
+                    options.add(new VehicleOption("Deep-Space Probe (Public Archive)", "Spacecraft",
+                            DataAvailability.HISTORICAL_ONLY));
+                    break;
             }
             return options;
         }
@@ -837,6 +912,7 @@ public class MissionTelemetryDashboard extends JFrame {
         }
     }
 
+    // Holds a rolling time-series for one telemetry metric.
     private static class TelemetrySeries {
         private final List<Double> values = new ArrayList<>();
         private final List<Long> timestamps = new ArrayList<>();
@@ -916,11 +992,12 @@ public class MissionTelemetryDashboard extends JFrame {
         private final String label;
         private final TelemetrySeries series;
 
+        // Draws a time-series chart with axes and tooltips.
         GraphPanel(String label, TelemetrySeries series) {
             this.label = label;
             this.series = series;
             setBorder(BorderFactory.createCompoundBorder(
-                    BorderFactory.createLineBorder(COLOR_BORDER),
+                    new LineBorder(COLOR_BORDER, 1, true),
                     BorderFactory.createEmptyBorder(12, 12, 12, 12)
             ));
             setBackground(COLOR_CARD);
@@ -951,18 +1028,22 @@ public class MissionTelemetryDashboard extends JFrame {
                 max = min + 0.01;
             }
 
-            int left = 8;
+            int left = 40;
             int right = width - 8;
             int top = 30;
             int bottom = height - 16;
             int plotWidth = right - left;
             int plotHeight = bottom - top;
 
-            g2.setColor(new Color(235, 238, 242));
+            g2.setColor(new Color(64, 72, 90));
             int gridLines = 4;
             for (int i = 0; i <= gridLines; i++) {
                 int y = top + (int) ((i / (double) gridLines) * plotHeight);
                 g2.drawLine(left, y, right, y);
+                double value = max - (i / (double) gridLines) * (max - min);
+                g2.setColor(COLOR_SUBTLE);
+                g2.drawString(FORMAT.format(value), 4, y + 4);
+                g2.setColor(new Color(64, 72, 90));
             }
             g2.setColor(COLOR_BORDER);
             g2.drawRect(left, top, plotWidth, plotHeight);
@@ -1017,6 +1098,7 @@ public class MissionTelemetryDashboard extends JFrame {
         }
     }
 
+    // Data sources available in the Sources dropdown.
     private enum DataSource {
         SIMULATED("Simulated (Demo)"),
         ISS_TLE("ISS TLE (Celestrak)"),
@@ -1044,6 +1126,7 @@ public class MissionTelemetryDashboard extends JFrame {
         }
     }
 
+    // Snapshot of live values from a data source.
     private static class DataSnapshot {
         private final Double velocityMs;
         private final Double tempC;
