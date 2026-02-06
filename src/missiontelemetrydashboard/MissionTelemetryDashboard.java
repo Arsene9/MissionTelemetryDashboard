@@ -5,9 +5,11 @@ import java.awt.Color;
 import java.awt.CardLayout;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.Graphics2D;
 import java.awt.GridLayout;
 import java.awt.Insets;
 import java.awt.Image;
+import java.awt.RenderingHints;
 import java.text.DecimalFormat;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -44,6 +46,23 @@ public class MissionTelemetryDashboard extends JFrame {
     private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm:ss");
     private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
     private static final long HISTORY_STEP_MS = 60L * 60L * 1000L;
+    private static final Font FONT_TITLE = new Font("Segoe UI", Font.BOLD, 24);
+    private static final Font FONT_SUBTITLE = new Font("Segoe UI", Font.BOLD, 13);
+    private static final Font FONT_STATUS = new Font("Segoe UI", Font.BOLD, 12);
+    private static final Font FONT_LABEL = new Font("Segoe UI", Font.PLAIN, 12);
+    private static final Font FONT_VALUE = new Font("Segoe UI", Font.BOLD, 26);
+    private static final Font FONT_BUTTON = new Font("Segoe UI", Font.PLAIN, 12);
+    private static final Color COLOR_BG = new Color(245, 247, 250);
+    private static final Color COLOR_CARD = new Color(255, 255, 255);
+    private static final Color COLOR_BORDER = new Color(220, 225, 230);
+    private static final Color COLOR_TEXT = new Color(40, 40, 40);
+    private static final Color COLOR_SUBTLE = new Color(110, 120, 130);
+    private static final Color COLOR_ACCENT = new Color(0, 102, 204);
+    private static final Color COLOR_ACCENT_LIGHT = new Color(227, 239, 251);
+    private static final Color COLOR_STATUS_OK = new Color(226, 245, 232);
+    private static final Color COLOR_STATUS_WARN = new Color(255, 242, 204);
+    private static final Color COLOR_STATUS_OK_TEXT = new Color(0, 128, 0);
+    private static final Color COLOR_STATUS_WARN_TEXT = new Color(176, 94, 0);
     // Optional AIS Hub username; leave blank to disable AIS polling.
     private static String AIS_USERNAME = "";
 
@@ -102,6 +121,7 @@ public class MissionTelemetryDashboard extends JFrame {
         super("Mission Telemetry Dashboard");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BorderLayout(12, 12));
+        getContentPane().setBackground(COLOR_BG);
         add(buildHeader(), BorderLayout.NORTH);
         add(buildCenterPanel(), BorderLayout.CENTER);
         add(buildAlerts(), BorderLayout.EAST);
@@ -117,24 +137,32 @@ public class MissionTelemetryDashboard extends JFrame {
     private JPanel buildHeader() {
         JPanel header = new JPanel(new BorderLayout(12, 12));
         header.setBorder(BorderFactory.createEmptyBorder(12, 12, 0, 12));
+        header.setBackground(COLOR_BG);
 
-        titleLabel.setFont(new Font("SansSerif", Font.BOLD, 22));
+        titleLabel.setFont(FONT_TITLE);
+        titleLabel.setForeground(COLOR_TEXT);
         titleLabel.setHorizontalAlignment(SwingConstants.CENTER);
 
-        statusValue.setFont(new Font("SansSerif", Font.BOLD, 16));
+        statusValue.setFont(FONT_STATUS);
         statusValue.setHorizontalAlignment(SwingConstants.CENTER);
         statusValue.setText("STATUS: NOMINAL");
-        statusValue.setForeground(new Color(0, 128, 0));
+        statusValue.setForeground(COLOR_STATUS_OK_TEXT);
+        statusValue.setBackground(COLOR_STATUS_OK);
+        statusValue.setOpaque(true);
+        statusValue.setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 8));
 
-        dataModeLabel.setFont(new Font("SansSerif", Font.BOLD, 14));
+        dataModeLabel.setFont(FONT_SUBTITLE);
+        dataModeLabel.setForeground(COLOR_SUBTLE);
         dataModeLabel.setHorizontalAlignment(SwingConstants.CENTER);
 
         JPanel titleStack = new JPanel(new GridLayout(3, 1, 0, 4));
+        titleStack.setBackground(COLOR_BG);
         titleStack.add(titleLabel);
         titleStack.add(dataModeLabel);
         titleStack.add(statusValue);
 
         JPanel center = new JPanel(new BorderLayout(12, 12));
+        center.setBackground(COLOR_BG);
         center.add(buildTopControls(), BorderLayout.NORTH);
         center.add(titleStack, BorderLayout.CENTER);
 
@@ -144,14 +172,22 @@ public class MissionTelemetryDashboard extends JFrame {
 
     private JPanel buildTopControls() {
         JPanel controls = new JPanel(new BorderLayout(8, 8));
+        controls.setBackground(COLOR_BG);
 
         JPanel leftControls = new JPanel(new GridLayout(1, 2, 0, 8));
+        leftControls.setBackground(COLOR_BG);
         vehicleSelect.setPrototypeDisplayValue(new VehicleOption("Select Vehicle", "Type", DataAvailability.BOTH));
         sourceSelect.setPrototypeDisplayValue(DataSource.SIMULATED);
         JLabel vehicleLabel = new JLabel("Vehicle");
         JLabel sourceLabel = new JLabel("Sources");
-        vehicleLabel.setFont(new Font("SansSerif", Font.PLAIN, 12));
-        sourceLabel.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        vehicleLabel.setFont(FONT_LABEL);
+        sourceLabel.setFont(FONT_LABEL);
+        vehicleLabel.setForeground(COLOR_SUBTLE);
+        sourceLabel.setForeground(COLOR_SUBTLE);
+        vehicleSelect.setFont(FONT_LABEL);
+        sourceSelect.setFont(FONT_LABEL);
+        vehicleSelect.setBackground(COLOR_CARD);
+        sourceSelect.setBackground(COLOR_CARD);
         URL refreshUrl = MissionTelemetryDashboard.class.getResource(
                 "/missiontelemetrydashboard/icons/refresh.png");
         if (refreshUrl != null) {
@@ -173,13 +209,16 @@ public class MissionTelemetryDashboard extends JFrame {
         refreshButton.setToolTipText("Refresh vehicles");
 
         JPanel vehiclePanelBox = new JPanel(new BorderLayout(0, 0));
+        vehiclePanelBox.setBackground(COLOR_BG);
         JPanel vehicleInputPanel = new JPanel(new BorderLayout(0, 0));
+        vehicleInputPanel.setBackground(COLOR_BG);
         vehicleInputPanel.add(vehicleSelect, BorderLayout.CENTER);
         vehicleInputPanel.add(refreshButton, BorderLayout.EAST);
         vehiclePanelBox.add(vehicleLabel, BorderLayout.WEST);
         vehiclePanelBox.add(vehicleInputPanel, BorderLayout.CENTER);
 
         JPanel sourcePanelBox = new JPanel(new BorderLayout(0, 0));
+        sourcePanelBox.setBackground(COLOR_BG);
         sourcePanelBox.add(sourceLabel, BorderLayout.WEST);
         sourcePanelBox.add(sourceSelect, BorderLayout.CENTER);
         sourcePanelBox.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 0));
@@ -188,6 +227,17 @@ public class MissionTelemetryDashboard extends JFrame {
         leftControls.add(sourcePanelBox);
 
         JPanel rightControls = new JPanel(new GridLayout(1, 3, 8, 8));
+        rightControls.setBackground(COLOR_BG);
+        historicalButton.setFont(FONT_BUTTON);
+        realtimeButton.setFont(FONT_BUTTON);
+        exportButton.setFont(FONT_BUTTON);
+        exportButton.setFocusPainted(false);
+        exportButton.setBackground(COLOR_CARD);
+        exportButton.setForeground(COLOR_TEXT);
+        exportButton.setBorder(BorderFactory.createLineBorder(COLOR_BORDER));
+        exportButton.setOpaque(true);
+        styleToggleButton(historicalButton, false);
+        styleToggleButton(realtimeButton, true);
         rightControls.add(historicalButton);
         rightControls.add(realtimeButton);
         rightControls.add(exportButton);
@@ -200,6 +250,8 @@ public class MissionTelemetryDashboard extends JFrame {
     private JPanel buildCenterPanel() {
         metricsPanel.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
         graphsPanel.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
+        metricsPanel.setBackground(COLOR_BG);
+        graphsPanel.setBackground(COLOR_BG);
 
         metricsPanel.add(buildMetricPanel("Battery Voltage (V)", batteryValue));
         metricsPanel.add(buildMetricPanel("Thermal Temp (C)", tempValue));
@@ -221,14 +273,17 @@ public class MissionTelemetryDashboard extends JFrame {
     private JPanel buildMetricPanel(String label, JLabel valueLabel) {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(210, 210, 210)),
+                BorderFactory.createLineBorder(COLOR_BORDER),
                 BorderFactory.createEmptyBorder(12, 12, 12, 12)
         ));
+        panel.setBackground(COLOR_CARD);
 
         JLabel title = new JLabel(label);
-        title.setFont(new Font("SansSerif", Font.PLAIN, 14));
+        title.setFont(FONT_LABEL);
+        title.setForeground(COLOR_SUBTLE);
 
-        valueLabel.setFont(new Font("SansSerif", Font.BOLD, 28));
+        valueLabel.setFont(FONT_VALUE);
+        valueLabel.setForeground(COLOR_TEXT);
         valueLabel.setHorizontalAlignment(SwingConstants.CENTER);
 
         panel.add(title, BorderLayout.NORTH);
@@ -240,17 +295,23 @@ public class MissionTelemetryDashboard extends JFrame {
         JPanel alerts = new JPanel(new BorderLayout());
         alerts.setBorder(BorderFactory.createEmptyBorder(12, 0, 12, 12));
         alerts.setPreferredSize(new Dimension(280, 0));
+        alerts.setBackground(COLOR_BG);
 
         JLabel title = new JLabel("Alerts");
-        title.setFont(new Font("SansSerif", Font.BOLD, 16));
+        title.setFont(FONT_SUBTITLE);
+        title.setForeground(COLOR_TEXT);
 
         alertsArea.setEditable(false);
         alertsArea.setLineWrap(true);
         alertsArea.setWrapStyleWord(true);
-        alertsArea.setFont(new Font("Monospaced", Font.PLAIN, 12));
+        alertsArea.setFont(FONT_LABEL);
+        alertsArea.setForeground(COLOR_TEXT);
+        alertsArea.setBackground(COLOR_CARD);
         alertsArea.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
 
         JScrollPane scrollPane = new JScrollPane(alertsArea);
+        scrollPane.setBorder(BorderFactory.createLineBorder(COLOR_BORDER));
+        scrollPane.getViewport().setBackground(COLOR_CARD);
 
         alerts.add(title, BorderLayout.NORTH);
         alerts.add(scrollPane, BorderLayout.CENTER);
@@ -317,10 +378,12 @@ public class MissionTelemetryDashboard extends JFrame {
 
         if (batteryCritical || tempHigh || signalLow) {
             statusValue.setText("STATUS: ATTENTION REQUIRED");
-            statusValue.setForeground(new Color(176, 94, 0));
+            statusValue.setForeground(COLOR_STATUS_WARN_TEXT);
+            statusValue.setBackground(COLOR_STATUS_WARN);
         } else {
             statusValue.setText("STATUS: NOMINAL");
-            statusValue.setForeground(new Color(0, 128, 0));
+            statusValue.setForeground(COLOR_STATUS_OK_TEXT);
+            statusValue.setBackground(COLOR_STATUS_OK);
         }
     }
 
@@ -437,6 +500,22 @@ public class MissionTelemetryDashboard extends JFrame {
         currentMode = mode;
         dataModeLabel.setText(mode == DataMode.REALTIME ? "Real-Time Data" : "Historical Data");
         centerLayout.show(centerPanel, mode.name());
+        styleToggleButton(historicalButton, mode == DataMode.HISTORICAL);
+        styleToggleButton(realtimeButton, mode == DataMode.REALTIME);
+    }
+
+    private void styleToggleButton(JButton button, boolean active) {
+        button.setFocusPainted(false);
+        button.setOpaque(true);
+        if (active) {
+            button.setBackground(COLOR_ACCENT);
+            button.setForeground(Color.WHITE);
+            button.setBorder(BorderFactory.createLineBorder(COLOR_ACCENT));
+        } else {
+            button.setBackground(COLOR_CARD);
+            button.setForeground(COLOR_TEXT);
+            button.setBorder(BorderFactory.createLineBorder(COLOR_BORDER));
+        }
     }
 
     private void seedHistory() {
@@ -841,21 +920,25 @@ public class MissionTelemetryDashboard extends JFrame {
             this.label = label;
             this.series = series;
             setBorder(BorderFactory.createCompoundBorder(
-                    BorderFactory.createLineBorder(new Color(210, 210, 210)),
+                    BorderFactory.createLineBorder(COLOR_BORDER),
                     BorderFactory.createEmptyBorder(12, 12, 12, 12)
             ));
+            setBackground(COLOR_CARD);
+            setOpaque(true);
             setToolTipText("");
         }
 
         @Override
         protected void paintComponent(java.awt.Graphics g) {
             super.paintComponent(g);
+            Graphics2D g2 = (Graphics2D) g;
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             int width = getWidth();
             int height = getHeight();
 
-            g.setColor(Color.DARK_GRAY);
-            g.setFont(new Font("SansSerif", Font.PLAIN, 14));
-            g.drawString(label, 8, 18);
+            g2.setColor(COLOR_TEXT);
+            g2.setFont(FONT_LABEL);
+            g2.drawString(label, 8, 18);
 
             List<Double> values = series.getValues();
             if (values.size() < 2) {
@@ -875,22 +958,28 @@ public class MissionTelemetryDashboard extends JFrame {
             int plotWidth = right - left;
             int plotHeight = bottom - top;
 
-            g.setColor(new Color(230, 230, 230));
-            g.drawRect(left, top, plotWidth, plotHeight);
+            g2.setColor(new Color(235, 238, 242));
+            int gridLines = 4;
+            for (int i = 0; i <= gridLines; i++) {
+                int y = top + (int) ((i / (double) gridLines) * plotHeight);
+                g2.drawLine(left, y, right, y);
+            }
+            g2.setColor(COLOR_BORDER);
+            g2.drawRect(left, top, plotWidth, plotHeight);
 
-            g.setColor(new Color(0, 102, 204));
+            g2.setColor(COLOR_ACCENT);
             int count = values.size();
             int prevX = left;
             int prevY = bottom - (int) ((values.get(0) - min) / (max - min) * plotHeight);
             for (int i = 1; i < count; i++) {
                 int x = left + (int) ((i / (double) (count - 1)) * plotWidth);
                 int y = bottom - (int) ((values.get(i) - min) / (max - min) * plotHeight);
-                g.drawLine(prevX, prevY, x, y);
+                g2.drawLine(prevX, prevY, x, y);
                 prevX = x;
                 prevY = y;
             }
 
-            g.setColor(new Color(120, 120, 120));
+            g2.setColor(COLOR_SUBTLE);
             int ticks = 4;
             for (int i = 0; i <= ticks; i++) {
                 int x = left + (int) ((i / (double) ticks) * plotWidth);
@@ -900,7 +989,7 @@ public class MissionTelemetryDashboard extends JFrame {
                         .atZone(java.time.ZoneId.systemDefault())
                         .toLocalDateTime()
                         .format(DateTimeFormatter.ofPattern("MM-dd"));
-                g.drawString(labelText, x - 14, bottom + 14);
+                g2.drawString(labelText, x - 14, bottom + 14);
             }
         }
 
